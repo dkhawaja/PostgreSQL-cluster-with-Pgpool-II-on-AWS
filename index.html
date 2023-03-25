@@ -1,0 +1,877 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>Step-by-Step Guide: Setting up a High Availability PostgreSQL Cluster with Load Balancing and Automatic Fail-over on AWS EC2 using Pgpool-II and Watchdog</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 3px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.column-list {
+	display: flex;
+	justify-content: space-between;
+}
+
+.column {
+	padding: 0 1em;
+}
+
+.column:first-child {
+	padding-left: 0;
+}
+
+.column:last-child {
+	padding-right: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+	border-collapse: collapse;
+}
+
+table {
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-block;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1.25em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(55, 53, 47, 1);
+}
+.highlight-gray {
+	color: rgba(120, 119, 116, 1);
+	fill: rgba(120, 119, 116, 1);
+}
+.highlight-brown {
+	color: rgba(159, 107, 83, 1);
+	fill: rgba(159, 107, 83, 1);
+}
+.highlight-orange {
+	color: rgba(217, 115, 13, 1);
+	fill: rgba(217, 115, 13, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 145, 47, 1);
+	fill: rgba(203, 145, 47, 1);
+}
+.highlight-teal {
+	color: rgba(68, 131, 97, 1);
+	fill: rgba(68, 131, 97, 1);
+}
+.highlight-blue {
+	color: rgba(51, 126, 169, 1);
+	fill: rgba(51, 126, 169, 1);
+}
+.highlight-purple {
+	color: rgba(144, 101, 176, 1);
+	fill: rgba(144, 101, 176, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(212, 76, 71, 1);
+	fill: rgba(212, 76, 71, 1);
+}
+.highlight-gray_background {
+	background: rgba(241, 241, 239, 1);
+}
+.highlight-brown_background {
+	background: rgba(244, 238, 238, 1);
+}
+.highlight-orange_background {
+	background: rgba(251, 236, 221, 1);
+}
+.highlight-yellow_background {
+	background: rgba(251, 243, 219, 1);
+}
+.highlight-teal_background {
+	background: rgba(237, 243, 236, 1);
+}
+.highlight-blue_background {
+	background: rgba(231, 243, 248, 1);
+}
+.highlight-purple_background {
+	background: rgba(244, 240, 247, 0.8);
+}
+.highlight-pink_background {
+	background: rgba(249, 238, 243, 0.8);
+}
+.highlight-red_background {
+	background: rgba(253, 235, 236, 1);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(120, 119, 116, 1);
+	fill: rgba(120, 119, 116, 1);
+}
+.block-color-brown {
+	color: rgba(159, 107, 83, 1);
+	fill: rgba(159, 107, 83, 1);
+}
+.block-color-orange {
+	color: rgba(217, 115, 13, 1);
+	fill: rgba(217, 115, 13, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 145, 47, 1);
+	fill: rgba(203, 145, 47, 1);
+}
+.block-color-teal {
+	color: rgba(68, 131, 97, 1);
+	fill: rgba(68, 131, 97, 1);
+}
+.block-color-blue {
+	color: rgba(51, 126, 169, 1);
+	fill: rgba(51, 126, 169, 1);
+}
+.block-color-purple {
+	color: rgba(144, 101, 176, 1);
+	fill: rgba(144, 101, 176, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(212, 76, 71, 1);
+	fill: rgba(212, 76, 71, 1);
+}
+.block-color-gray_background {
+	background: rgba(241, 241, 239, 1);
+}
+.block-color-brown_background {
+	background: rgba(244, 238, 238, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 236, 221, 1);
+}
+.block-color-yellow_background {
+	background: rgba(251, 243, 219, 1);
+}
+.block-color-teal_background {
+	background: rgba(237, 243, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(231, 243, 248, 1);
+}
+.block-color-purple_background {
+	background: rgba(244, 240, 247, 0.8);
+}
+.block-color-pink_background {
+	background: rgba(249, 238, 243, 0.8);
+}
+.block-color-red_background {
+	background: rgba(253, 235, 236, 1);
+}
+.select-value-color-pink { background-color: rgba(245, 224, 233, 1); }
+.select-value-color-purple { background-color: rgba(232, 222, 238, 1); }
+.select-value-color-green { background-color: rgba(219, 237, 219, 1); }
+.select-value-color-gray { background-color: rgba(227, 226, 224, 1); }
+.select-value-color-opaquegray { background-color: rgba(255, 255, 255, 0.0375); }
+.select-value-color-orange { background-color: rgba(250, 222, 201, 1); }
+.select-value-color-brown { background-color: rgba(238, 224, 218, 1); }
+.select-value-color-red { background-color: rgba(255, 226, 221, 1); }
+.select-value-color-yellow { background-color: rgba(253, 236, 200, 1); }
+.select-value-color-blue { background-color: rgba(211, 229, 239, 1); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style></head><body><article id="ce854d1c-6dce-41d6-9041-22ec5ff41fee" class="page sans"><header><img class="page-cover-image" src="https://images.unsplash.com/photo-1648459776041-cbeab708f17b?ixlib=rb-4.0.3&amp;q=85&amp;fm=jpg&amp;crop=entropy&amp;cs=srgb" style="object-position:center 50%"/><div class="page-header-icon page-header-icon-with-cover"><img class="icon" src="https://th.bing.com/th/id/OIP.UJt2uAlAUrkajZRqpHXBjAHaHa?pid=ImgDet&amp;w=202&amp;h=202&amp;c=7"/></div><h1 class="page-title"><strong><strong>Step-by-Step Guide: Setting up a High Availability PostgreSQL Cluster with Load Balancing and Automatic Fail-over on AWS EC2 using Pgpool-II and Watchdog</strong></strong></h1><table class="properties"><tbody><tr class="property-row property-row-created_by"><th><span class="icon property-icon"><svg viewBox="0 0 16 16" style="width:14px;height:14px;display:block;fill:rgba(55, 53, 47, 0.45);flex-shrink:0;-webkit-backface-visibility:hidden" class="typesCreatedBy"><path d="M8 15.126C11.8623 15.126 15.0615 11.9336 15.0615 8.06445C15.0615 4.20215 11.8623 1.00293 7.99316 1.00293C4.13086 1.00293 0.938477 4.20215 0.938477 8.06445C0.938477 11.9336 4.1377 15.126 8 15.126ZM8 10.4229C6.05176 10.4229 4.54785 11.1133 3.83008 11.9131C2.90039 10.9082 2.33301 9.55469 2.33301 8.06445C2.33301 4.91992 4.84863 2.39746 7.99316 2.39746C11.1377 2.39746 13.6738 4.91992 13.6738 8.06445C13.6738 9.55469 13.1064 10.9082 12.1699 11.9131C11.4521 11.1133 9.94824 10.4229 8 10.4229ZM8 9.30176C9.32617 9.30859 10.3516 8.18066 10.3516 6.71094C10.3516 5.33008 9.31934 4.18164 8 4.18164C6.6875 4.18164 5.6416 5.33008 5.64844 6.71094C5.65527 8.18066 6.68066 9.28809 8 9.30176Z"></path></svg></span>Created By</th><td><span class="user"><img src="https://lh3.googleusercontent.com/a/AATXAJwX1iOPeEkNC19tfEr90_DgzrIbMFcVA2QSOZ2i=s100" class="icon user-icon"/>Daniyal Khawaja</span></td></tr><tr class="property-row property-row-select"><th><span class="icon property-icon"><svg viewBox="0 0 16 16" style="width:14px;height:14px;display:block;fill:rgba(55, 53, 47, 0.45);flex-shrink:0;-webkit-backface-visibility:hidden" class="typesSelect"><path d="M8 15.126C11.8623 15.126 15.0615 11.9336 15.0615 8.06445C15.0615 4.20215 11.8623 1.00293 7.99316 1.00293C4.13086 1.00293 0.938477 4.20215 0.938477 8.06445C0.938477 11.9336 4.1377 15.126 8 15.126ZM8 13.7383C4.85547 13.7383 2.33301 11.209 2.33301 8.06445C2.33301 4.91992 4.84863 2.39746 7.99316 2.39746C11.1377 2.39746 13.6738 4.91992 13.6738 8.06445C13.6738 11.209 11.1445 13.7383 8 13.7383ZM7.62402 10.6348C7.79492 10.915 8.20508 10.9287 8.37598 10.6348L10.666 6.73145C10.8574 6.41016 10.7002 6.04102 10.3652 6.04102H5.62793C5.29297 6.04102 5.14941 6.43066 5.32031 6.73145L7.62402 10.6348Z"></path></svg></span>Type</th><td><span class="selected-value select-value-color-red">Walk-Through</span></td></tr><tr class="property-row property-row-created_time"><th><span class="icon property-icon"><svg viewBox="0 0 16 16" style="width:14px;height:14px;display:block;fill:rgba(55, 53, 47, 0.45);flex-shrink:0;-webkit-backface-visibility:hidden" class="typesCreatedAt"><path d="M8 15.126C11.8623 15.126 15.0615 11.9336 15.0615 8.06445C15.0615 4.20215 11.8623 1.00293 7.99316 1.00293C4.13086 1.00293 0.938477 4.20215 0.938477 8.06445C0.938477 11.9336 4.1377 15.126 8 15.126ZM8 13.7383C4.85547 13.7383 2.33301 11.209 2.33301 8.06445C2.33301 4.91992 4.84863 2.39746 7.99316 2.39746C11.1377 2.39746 13.6738 4.91992 13.6738 8.06445C13.6738 11.209 11.1445 13.7383 8 13.7383ZM4.54102 8.91211H7.99316C8.30078 8.91211 8.54004 8.67285 8.54004 8.37207V3.8877C8.54004 3.58691 8.30078 3.34766 7.99316 3.34766C7.69238 3.34766 7.45312 3.58691 7.45312 3.8877V7.83203H4.54102C4.2334 7.83203 4.00098 8.06445 4.00098 8.37207C4.00098 8.67285 4.2334 8.91211 4.54102 8.91211Z"></path></svg></span>Created</th><td><time>@March 24, 2023 7:44 PM</time></td></tr></tbody></table></header><div class="page-body"><p id="7bc1fc3d-87ed-4c2c-9bdd-8670bcf79200" class="">Welcome to this step-by-step guide on setting up a high-availability Postgres cluster with load balancing and automatic failover on AWS EC2 using Pgpool and Watchdog. This guide walks you through the process of creating a highly available database cluster on AWS that provides improved reliability, automatic failover, and load balancing for improved performance.</p><p id="da71db5f-53f5-4e8e-9b61-22bf5704fc57" class="">Before we begin, note that this guide assumes that you have some basic knowledge of AWS, Postgres, Pgpool, and Watchdog. If you are new to any of these technologies, it is recommended that you review the documentation and tutorials provided by their respective vendors before proceeding.</p><p id="f28391f9-6a8d-4df2-b85b-45ef98926072" class="">With that said, let&#x27;s get started!</p><h1 id="89cdbeb9-aabd-452f-8766-194bb4c89f27" class="block-color-yellow"><strong><strong>Step 1: Setting up the Ec2 instances
+</strong></strong></h1><ul id="b4ef42ee-bc89-43e6-a06f-1337d28ef18f" class="bulleted-list"><li style="list-style-type:disc">Log in to the AWS Management Console and navigate to the EC2 dashboard.</li></ul><ul id="f8f5b215-1725-4f2d-89de-80d93ccadd0e" class="bulleted-list"><li style="list-style-type:disc">Click the &quot;Launch Instance&quot; button to begin creating a new EC2 instance.</li></ul><ul id="9b398fb5-f1ac-4efe-80c1-a8e7dce53acc" class="bulleted-list"><li style="list-style-type:disc">Choose the Ubuntu Server AMI (Amazon Machine Image) from the list of available images.</li></ul><ul id="c98a67f8-00a3-4b8e-8375-842287d4a4d9" class="bulleted-list"><li style="list-style-type:disc">Select the instance type for your EC2 instances. For this setup, it&#x27;s recommended to use at least medium instances with 2 vCPUs, 4 GB RAM, and 10 GB storage.</li></ul><ul id="1dfb5528-5d6c-49ab-9d66-141aadbe6222" class="bulleted-list"><li style="list-style-type:disc">Configure the network settings. Make sure to select the same sub-net for all three instances to ensure that they are on the same network.</li></ul><ul id="c2fc6cb9-73d9-4574-9533-154167221670" class="bulleted-list"><li style="list-style-type:disc">Review the instance details, and then click &quot;Launch&quot;.</li></ul><ul id="4110cb54-f7cf-4e0c-93cb-931807a5bf8a" class="bulleted-list"><li style="list-style-type:disc">Create a new key pair or select an existing one. This will allow you to access your instances using SSH.</li></ul><ul id="7b873ab7-d05d-42ef-8276-5c093add65a8" class="bulleted-list"><li style="list-style-type:disc">Launch your instances and wait for them to become available.</li></ul><ul id="ba88059c-a0ab-48fd-abab-e6df07249e41" class="bulleted-list"><li style="list-style-type:disc">Once your instances are up and running, use SSH to connect to each instance.</li></ul><p id="b21c1e41-2917-4cfe-b6db-de742946093c" class="">
+</p><h1 id="a6ec5655-c530-44e8-aaa2-b60dd1b76db7" class="block-color-yellow">Step 2: Installing PostgreSQL and Pgpool-II.</h1><p id="3d358d87-9b13-4faa-8050-981d8419a252" class="">
+</p><figure class="block-color-gray_background callout" style="white-space:pre-wrap;display:flex" id="918b9339-9444-4d42-8f56-3927ec66f2bc"><div style="font-size:1.5em"><span class="icon">💡</span></div><div style="width:100%">In this guide, we will be using version 15 of PostgreSQL.</div></figure><figure class="block-color-gray_background callout" style="white-space:pre-wrap;display:flex" id="9a9cf195-e0d0-4ba0-833f-c442ba5bb7dd"><div style="font-size:1.5em"><span class="icon">💡</span></div><div style="width:100%">The following steps need to be replicated in each instance:</div></figure><p id="ff9d7444-8803-4719-8a5d-b850bc52d50f" class="">
+</p><p id="8f8323ed-f16e-47ea-a4b4-6152d04adc68" class="">Once you&#x27;re logged in to each instance, run the following command to update and upgrade the system packages:</p><pre id="b8286462-6eb4-4704-b6dc-f876f1507a76" class="code"><code>sudo apt-get update &amp;&amp; sudo apt-get upgrade</code></pre><p id="c1e028ab-1e0e-42d2-82c5-de6f22cbdf47" class="">Next, you&#x27;ll need to download and install Postgres. Start by adding the Postgres repository to the sources list:</p><pre id="14f7df94-0afd-4d0c-bef8-1af279299e07" class="code"><code>sudo sh -c &#x27;echo &quot;deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main&quot; &gt; /etc/apt/sources.list.d/pgdg.list&#x27;</code></pre><p id="5dd5dc6a-3201-4ca6-83aa-9a6fd5ae6a92" class="">Import the Postgres signing key to trust the packages from the repository:</p><pre id="b332ae1d-f92f-449f-a825-230ce1e5b4ed" class="code"><code>wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -</code></pre><p id="b72aea7b-867a-4979-ad68-5a70d0384909" class="">Update the package list again to include the Postgres packages:</p><pre id="b23b2430-8b4c-4a0f-9a41-fb14e1bd0f05" class="code"><code>sudo apt-get update</code></pre><p id="9aca01b7-7fd0-4d56-b67f-d09a9788e927" class="">Finally, install Postgres by running the following command:</p><pre id="6204e19a-4a16-4501-989d-15d78aa88c66" class="code"><code>sudo apt-get -y install postgresql</code></pre><p id="67508b91-4a68-4d26-8e5a-b241f5e52029" class="">
+</p><h1 id="a738c510-0c13-497e-8b28-be54db52cf44" class="block-color-yellow">Pgpool-II</h1><p id="dac44eb5-f0e8-4170-b1f4-859f0f383027" class="">
+</p><p id="aa1f60f4-a035-4470-afe1-ac86fd583810" class=""> Download Pgpool version 4.4.2 by running the following command</p><pre id="6362b0f8-63e3-469f-bfdc-7fb8bb8df0ae" class="code"><code>wget https://www.pgpool.net/mediawiki/download.php?f=pgpool-II-4.4.2.tar.gz</code></pre><p id="9893d551-9269-4a04-82d5-4803dfb67d33" class="">Install the required packages for building Pgpool by running the following command:</p><pre id="10742880-d975-4108-a0c7-6f50ec4d35a7" class="code"><code>sudo apt-get install libpq-dev bison build-essential</code></pre><p id="5abd13fd-3e27-4e4a-bb6e-c438e94f0814" class="">Once the packages are installed, navigate to the directory where you downloaded Pgpool and extract the files by running:</p><pre id="ac0f3e8f-0a03-489b-81bf-8743122b6b32" class="code"><code>tar -zxvf pgpool-II-4.4.2.tar.gz</code></pre><p id="6138d2ae-7ea6-496e-8b30-053ac05fb00a" class="">Change to the extracted directory by running:</p><pre id="91e84d35-399c-4d8f-a1e7-e1cd73023b10" class="code"><code>cd pgpool-II-4.4.2</code></pre><p id="3c356ea3-4a71-4e84-bfd7-4145499fe84e" class="">Run the <code><strong>configure</strong></code> script to configure the build process:</p><pre id="0c8eafb4-bee2-4f3d-a831-b4795738c827" class="code"><code>./configure</code></pre><p id="5a2c6c67-1139-4342-b53d-9ff087e2a688" class="">After the configuration is complete, run the <code><strong>make</strong></code> command to build Pgpool:</p><pre id="ef5922e5-a3f2-4d33-b66e-d123b4fd472b" class="code"><code>make</code></pre><p id="d37d4ffb-4f17-486a-aab0-760a31a67fa1" class="">Once the build is complete, install Pgpool by running:</p><pre id="b3982ff8-0a1c-48d0-847c-05c53355f1dd" class="code"><code>sudo make install</code></pre><p id="1c2f8c42-84da-47bc-b276-da6fe261d63d" class="">
+</p><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="6b23ac00-539a-4c15-814f-68833535745f"><div style="font-size:1.5em"><span class="icon">💡</span></div><div style="width:100%">After installation, you can check the installed files in the <code><strong>/usr/local/etc/</strong></code> directory.</div></figure><p id="c4966837-b9d9-4532-b46a-3463bd763c6f" class="">
+</p><h1 id="766c7e78-8a4d-4c71-b680-fc80b1516c11" class="block-color-yellow">PostgreSQL setup</h1><p id="c28aa94b-ad0b-4049-8a32-19ced5b711f7" class="">To set up PostgreSQL on the main server , follow these steps:</p><p id="5e078119-66f4-470a-b7ad-cff02be34b0c" class="">
+</p><p id="875cceda-c8af-4aec-93b1-ba69702e8d28" class="">Initialize the PostgreSQL data directory by running the following command:</p><pre id="3ebe568e-23fa-42b5-9dd2-cef197594f46" class="code"><code>sudo mkdir /var/db &amp;&amp; sudo chmod a+rw /var/db &amp;&amp; mkdir \
+/var/db/postgres &amp;&amp; \
+/usr/lib/postgresql/15/bin/initdb -E UTF-8 /var/db/postgres/data15</code></pre><p id="7dffd6b5-e87a-4115-93e5-28442866c5db" class="">Open the <code><strong>postgresql.conf</strong></code> file for editing by running the following command:</p><pre id="d5bad571-85ee-452f-a15c-6ddfb1500dda" class="code"><code>cd /var/db/postgres/data15
+nano postgresql.conf</code></pre><p id="dd9f7447-5d23-4a58-8a13-b6c884b3799c" class="">In the <code><strong>postgresql.conf</strong></code> file, make the following changes:</p><pre id="feb69f5a-7426-4dcf-8784-199fecec53f7" class="code"><code>listen_addresses = &#x27;*&#x27; 
+port = 5432
+
+shared_buffers = 1GB
+work_mem = 2621kB
+maintenance_work_mem = 256MB
+dynamic_shared_memory_type = posix
+effective_io_concurrency = 200 
+
+# WAL settings
+wal_level = replica 
+wal_compression = on
+wal_buffers = 16MB 
+checkpoint_completion_target = 0.9
+max_wal_size = 3GB
+min_wal_size = 1GB
+
+# Archive settings
+archive_mode = on
+archive_command = &#x27;cp &quot;%p&quot; &quot;/usr/lib/postgresql/archivedir/%f&quot;&#x27;
+restore_command = &#x27;scp ubuntu@&lt;ip-address-of-main-server&gt;:/usr/lib/postgresql/archivedir/%f &quot;%p&quot;&#x27; 
+
+max_wal_senders = 10  
+max_replication_slots = 10 
+wal_keep_size = &#x27;1GB&#x27; 
+synchronous_standby_names = &#x27;*&#x27;
+wal_receiver_create_temp_slot = on 
+wal_receiver_status_interval = 5s 
+hot_standby_feedback = on 
+random_page_cost = 1.1
+effective_cache_size = 3GB
+default_statistics_target = 100</code></pre><p id="ea5cc4dc-355a-4cb2-85d2-8e145092d89f" class="">These changes include enabling the PostgreSQL server to listen on all network interfaces by setting <code><strong>listen_addresses</strong></code> to <code><strong>&#x27;*&#x27;</strong></code> and setting the <code><strong>port</strong></code> to <code><strong>5432</strong></code>.</p><p id="6f5ff551-b6f3-4def-82f2-564bcf0d1910" class="">The <code><strong>shared_buffers</strong></code> parameter has been set to 1GB, which controls the amount of memory that PostgreSQL uses for caching data. The <code><strong>work_mem</strong></code> parameter has been set to 2621kB, which controls the amount of memory used for sorting and other operations. The <code><strong>maintenance_work_mem</strong></code> parameter has been set to 256MB, which controls the amount of memory used for maintenance operations such as VACUUM and REINDEX.</p><p id="476bbe6c-1d36-4edb-a9a1-3e7da20038bd" class="">The <code><strong>wal_level</strong></code> has been set to <code><strong>replica</strong></code> to enable replication. The <code><strong>archive_mode</strong></code> parameter has been set to <code><strong>on</strong></code> to enable archiving of WAL files. The <code><strong>archive_command</strong></code> and <code><strong>restore_command</strong></code> parameters specify how the archived WAL files are copied to and restored from the archive directory.</p><p id="d6adc66b-807f-490d-8ca3-cfcf93029ead" class="">The <code><strong>max_wal_senders</strong></code>, <code><strong>max_replication_slots</strong></code>, <code><strong>wal_keep_size</strong></code>, <code><strong>synchronous_standby_names</strong></code>, <code><strong>wal_receiver_create_temp_slot</strong></code>, and <code><strong>wal_receiver_status_interval</strong></code> parameters are all related to synchronous replication and are set according to the specific needs of the cluster.</p><p id="61aaf0ec-3c91-4b9d-98f7-33da4e747adf" class="">Finally, various other parameters such as <code><strong>random_page_cost</strong></code>, <code><strong>effective_cache_size</strong></code>, and <code><strong>default_statistics_target</strong></code> have been set to improve performance.</p><p id="6eb17cc2-9bc0-4e13-9e83-4d8f98dfcfa9" class="">
+</p><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="7213d46a-8917-44cf-809f-c78d25653de9"><div style="font-size:1.5em"><span class="icon">💡</span></div><div style="width:100%">You can always change these settings according to your needs.</div></figure><p id="92c2e301-db6e-472e-85e1-de8c76744a9f" class="">
+</p><p id="adbb262c-16de-486c-9a8e-68cd2e156ca7" class="">To start the primary server, you need to first stop the PostgreSQL service if it is already running. This can be done with the command:</p><pre id="1b8b5239-e32e-4eba-9edb-6aeb08559f50" class="code"><code>sudo systemctl stop postgresql.service</code></pre><p id="314ec965-a5cb-412c-a215-b60aee548499" class="">Next, you need to make sure that the <code><strong>/var/run/postgresql/</strong></code>
+ directory has the necessary permissions. You can do this with the command:</p><pre id="0485b6ce-94fe-479b-aa41-9ec207bcd08e" class="code"><code>sudo chmod a+rw /var/run/postgresql/</code></pre><p id="93558a44-c22b-401d-9492-dbb67dad039c" class="">After that, create a directory for storing the archived WAL files and give it the necessary permissions. You can use the following commands for this:</p><pre id="32b45a1b-ed84-4347-9bb7-91d872c56b52" class="code"><code>sudo mkdir /usr/lib/postgresql/archivedir/
+sudo chmod a+rw /usr/lib/postgresql/archivedir</code></pre><p id="0c373d4d-c1db-4cc2-9a68-d0dcbf261628" class="">To start the primary server, run the following command:</p><pre id="94ad83f0-b1ca-4545-8b11-1f54238d1a9c" class="code"><code>/usr/lib/postgresql/15/bin/pg_ctl -D data15/ start -l logfile</code></pre><p id="35513897-04d1-460a-b2e2-a75a19ca0853" class="">Once the server is running, you can connect to it using the <code><strong>psql</strong></code>
+ command-line tool. Use the following command to create a new user with replication privileges:</p><pre id="f269fef6-e53c-40cc-944a-fa8193be5e1c" class="code"><code>psql -h localhost -U postgres
+####after entering psql, run these commands
+CREATE USER &lt;username&gt; WITH PASSWORD &#x27;&lt;password&gt;&#x27;;
+ALTER USER &lt;username&gt; WITH REPLICATION;
+ALTER USER &lt;username&gt; WITH SUPERUSER;</code></pre><p id="142a585e-cad2-4a31-b4d3-af4c7059df31" class="">To confirm that the user was created successfully, you can run the following command:</p><pre id="d510db63-29a5-4574-9f12-e02c09909dea" class="code"><code>SELECT usename, usecreatedb, usesuper, userepl, passwd IS NOT NULL AS haspassword FROM pg_user;</code></pre><p id="2d46fb1b-3062-4ffd-a623-1f2bb0385c32" class="">Next, you need to create replication slots for the replica databases. To create a physical replication slot, run the following command:</p><pre id="5f4c4e59-a0ee-4fc0-9e64-e82366caae57" class="code"><code>SELECT pg_create_physical_replication_slot(&#x27;&lt;slot_name&gt;&#x27;);#(per replica)</code></pre><p id="c03a41dd-0424-4749-8086-a5375719766a" class="">To view the replication slots, you can run the following command:</p><pre id="0980728a-e0a2-4353-91bb-ea4e98760b81" class="code"><code>SELECT slot_name, slot_type, active, wal_status FROM pg_replication_slots;</code></pre><p id="8e025448-7658-407c-82fc-30545c42c6c4" class="">By following these steps, you should now have a primary PostgreSQL server running with the necessary permissions, a user with replication privileges, and replication slots created for the replica databases.</p><p id="54d2aaba-a2f4-4448-9b16-fcf36e611491" class="">After creating the replication slots for replica databases, the next step is to add the replication servers to the main server&#x27;s <code><strong>pg_hba.conf</strong></code> file.</p><p id="8148ce80-db0a-495b-a808-9ce58b7cdfee" class="">Suppose the replication servers have IP addresses <code><strong>ip1</strong></code> and <code><strong>ip2</strong></code>. To add them to the <code><strong>pg_hba.conf</strong></code> file, run the following commands:</p><p id="33306b56-b337-467c-adf0-2a65d6f86f75" class="">
+</p><p id="a0f1af8e-2474-41ee-854f-9d77c67ee1db" class="">
+</p><pre id="49a796f2-3e5f-4c5c-a165-fe5ddb4afcfe" class="code"><code>sudo nano /var/db/postgres/data15/pg_hba.conf</code></pre><p id="e8afced7-654e-4038-8f8b-6e7a75f0d469" class="">Then, add the following lines to the file:</p><pre id="a040e6aa-aef0-4bf7-8aff-f535757c136f" class="code"><code>host replication    username    ip1/32   trust
+host postgres       ubuntu      ip1/32   trust
+host postgres       username    ip1/32   trust
+
+host replication    username    ip2/32    trust
+host postgres       ubuntu      ip2/32    trust
+host postgres       username    ip2/32    trust
+
+host replication    username    &lt;main-server-ip&gt;/32    trust
+host postgres       ubuntu      &lt;main-server-ip&gt;/32    trust
+host postgres       username    &lt;main-server-ip&gt;/32    trust</code></pre><p id="4799e91f-a7ce-47e3-83b4-4dc6d6d0fb1f" class="">
+</p><p id="59e2a897-c08f-4e0f-b9e4-3bbc8565d96c" class="">Save and close the file. After that, restart the PostgreSQL server using the following command:</p><pre id="aa44e8e5-67c7-42e2-a1e5-0186fdff2b72" class="code"><code>sudo /usr/lib/postgresql/15/bin/pg_ctl -D /var/db/postgres/data15/ restart -l logfile</code></pre><p id="9fb8c002-9ebb-4c60-bc55-54bd0840209c" class="">
+</p><h1 id="b81a5d46-b940-4fbe-9795-4a90b58367a9" class="block-color-yellow">PostgreSQL setup -  On standby servers</h1><p id="df95bcaf-5e01-4ee6-9e2d-66049a89dd09" class="">
+</p><p id="3505d4da-d7be-4004-a1e6-233cd00c222c" class="">Run the <code><strong>pg_basebackup</strong></code> command to create a base backup of the primary server on the standby server:</p><pre id="ce33d12c-38ec-4e5e-9c0a-a07c60c71ffa" class="code"><code>sudo -u postgres /usr/lib/postgresql/15/bin/pg_basebackup \
+--pgdata=/var/db/postgres/data15 --format=p --write-recovery-conf \
+--checkpoint=fast --label=mffb --progress --host=&lt;primary-ip&gt; \
+--port=5432 --username=&lt;username&gt;</code></pre><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="8420e7c7-08fb-49d7-a649-8220dc6594b4"><div style="font-size:1.5em"><span class="icon">💡</span></div><div style="width:100%">Note: Replace <code><strong>&lt;primary-ip&gt;</strong></code> and <code><strong>&lt;username&gt;</strong></code> with the appropriate values.</div></figure><p id="3c45fd82-05c2-4f65-bcc7-c7385ecc0171" class="">Edit the <code><strong>postgresql.conf</strong></code> file to add the following parameters:</p><pre id="9834a071-ed31-4526-8c6d-3c9f737c2d2e" class="code"><code>primary_conninfo = &#x27;user=&lt;username&gt; port=5432 host=172.31.15.104 application_name=172.31.6.95_username&#x27;
+primary_slot_name = &#x27;&lt;slot_name&gt;&#x27;
+hot_standby = on</code></pre><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="e03ace83-5532-4464-9692-cd5f56df7d93"><div style="font-size:1.5em"><span class="icon">💡</span></div><div style="width:100%">Note: Replace <code><strong>&lt;slot_name&gt;</strong></code> with the replication slot name created on the primary server.</div></figure><p id="31d01fdb-bb2d-48e1-8bc3-a8282880a78a" class="">Now execute these commands.</p><pre id="5f24ce9a-2370-4e93-b054-7b33f0449b03" class="code"><code>sudo skill postgres
+sudo chmod a+rw /var/run/postgresql/
+sudo mkdir /usr/lib/postgresql/archivedir/
+sudo chmod a+rw /usr/lib/postgresql/archivedir</code></pre><p id="737ee526-1104-4e10-a630-422c64d70115" class="">
+</p><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="c6d4e7ab-311e-453f-b3fb-e5901bae4864"><div style="font-size:1.5em"><span class="icon">‼️</span></div><div style="width:100%">First, enable password-less SSH from every node to every other node. To do this, run <code>ssh-keygen</code> on every node and copy its <code>~/.ssh/id_rsa.pub</code> file to every other node&#x27;s <code>~/.ssh/authorized_keys</code> file, including its own.</div></figure><p id="39f1070c-9499-4641-a05e-b05214dd6f32" class="">Now start the standby servers using the following command:</p><pre id="93937c20-d484-4dc6-ba9b-3eb6144db27d" class="code"><code>/usr/lib/postgresql/15/bin/pg_ctl  -D data15/ start -l logfile</code></pre><blockquote id="da4c2ec6-033c-40f4-aff5-b680ffc9cf93" class="">Running the command <code><strong>psql -h &lt;standby-ip&gt; -U &lt;username&gt;</strong></code>
+on the standby server and then executing <code><strong>SELECT * FROM pg_stat_wal_receiver;</strong></code>
+will display the status of the WAL receiver process. This will confirm whether the standby server is successfully receiving the WAL data from the primary server and is ready to serve as a standby server.</blockquote><p id="661d9cc4-7e04-4518-8478-a25b65198824" class="">
+</p><h1 id="30a49ef5-fa1b-45f8-a23d-1b069ea785a0" class="block-color-yellow">Configuring Pgpool-II with Watchdog and Load Balancing on the Main Server.</h1><p id="25466aab-c8b5-47cc-b285-e3899eb70897" class="">After setting up streaming replication, the next step is to configure pgpool and enable high availability and load balancing. The following steps should be taken on the main server:</p><p id="9e07aa57-b915-473f-a8f0-108d542f69cd" class="">
+</p><blockquote id="40a934b7-2704-48c9-9ff6-37e76ad28b2c" class="block-color-teal">Change into the “/usr/local/etc” directory </blockquote><p id="44f75c57-9a95-4c01-b05c-8cb22073babf" class=""> </p><p id="e961cb5c-bafe-4f8b-b96f-8e77771b18fe" class="">Move the sample files by running the following commands:</p><pre id="b36a1df7-2801-4b1b-b12a-661f22dc55c5" class="code"><code>sudo mv pgpool.conf.sample pgpool.conf
+sudo mv escalation.sh.sample escalation.sh
+sudo mv follow_primary.sh.sample follow_primary.sh
+sudo mv failover.sh.sample failover.sh
+sudo chmod +x escalation.sh follow_primary.sh failover.sh
+sudo chmod a+rw follow_primary.sh escalation.sh failover.sh</code></pre><p id="1f2db491-24c3-49f7-a511-039cb968f05a" class=""> Open pgpool.conf with <code><strong>sudo nano pgpool.conf</strong></code> and make the following changes:</p><pre id="5a81a11b-9ec2-4110-85ee-2a722a6fca0f" class="code"><code>backend_clustering_mode = &#x27;streaming_replication&#x27;
+listen_addresses = &#x27;&#x27;
+port = 9999
+pcp_listen_addresses = &#x27;&#x27;
+pcp_port = 9898
+backend_hostname0 = &#x27;&lt;ip-of-primary-server&gt;&#x27; (primary ip)
+backend_port0 = 5432
+backend_weight0 = 0
+backend_data_directory0 = &#x27;/var/db/postgres/data15&#x27;
+backend_flag0 = &#x27;ALLOW_TO_FAILOVER&#x27;
+backend_application_name0 = &#x27;primary_server&#x27;
+
+backend_hostname1 = &#x27;&lt;ip-of-standby-server-1&gt;&#x27;
+backend_port1 = 5432
+backend_weight1 = 1
+backend_data_directory1 = &#x27;/var/db/postgres/data15&#x27;
+backend_flag1 = &#x27;ALLOW_TO_FAILOVER&#x27;
+backend_flag1 = &#x27;ALLOW_TO_FAILOVER&#x27;
+backend_application_name1 = &#x27;replica_server1&#x27;
+
+backend_hostname2 = &#x27;&lt;ip-of-standby-server-2&gt;&#x27;
+backend_port2 = 5432
+backend_weight2 = 1
+backend_data_directory2 = &#x27;/var/db/postgres/data15&#x27;
+backend_flag2 = &#x27;ALLOW_TO_FAILOVER&#x27;
+backend_application_name2 = &#x27;replica_server2&#x27;
+
+pool_passwd = &#x27;pool_passwd&#x27;
+max_pool = 10
+log_standby_delay = &#x27;always&#x27;
+logging_collector = on
+log_directory = &#x27;/home/ubuntu/pgpool_logs&#x27;
+log_filename = &#x27;pgpool-%Y-%m-%d_%H%M%S.log&#x27;
+log_file_mode = 0600
+load_balance_mode = on
+ignore_leading_white_space = on
+read_only_function_list = &#x27;get_.,select_.&#x27;
+write_function_list = &#x27;nextval,setval,set_.,update_.,delete_.,insert_.&#x27;
+database_redirect_preference_list = &#x27;postgres:0(0.5),postgres:1(0.5),postgres:2(0.5)&#x27;
+sr_check_period = 10
+sr_check_user = &#x27;username&#x27;
+sr_check_password = &#x27;&#x27;
+sr_check_database = &#x27;postgres&#x27;
+delay_threshold = 20
+prefer_lower_delay_standby = on
+follow_primary_command = &#x27;/usr/local/etc/follow_primary.sh %d %h %p %D %m %H %M %P %r %R&#x27;
+
+#Configure the health check settings:
+health_check_period = 5
+health_check_timeout = 20
+health_check_user = &#x27;username&#x27;
+health_check_password = &#x27;password&#x27;
+health_check_database = &#x27;postgres&#x27;
+health_check_max_retries = 5
+health_check_retry_delay = 5
+failover_command = &#x27;/usr/local/etc/failover.sh %d %h %p %D %m %H %M %P %r %R %N %S&#x27;
+failover_on_backend_shutdown = on
+detach_false_primary = on
+search_primary_node_timeout = 10
+recovery_user = &#x27;username&#x27;
+auto_failback = on
+auto_failback_interval = 1min
+
+# Watchdog settings 
+
+use_watchdog = on
+trusted_servers = &#x27;server1,server2,server3&#x27;
+trusted_server_command = &#x27;/bin/ping -q -c3 %h&#x27;
+hostname0 = &#x27;server1&#x27;
+wd_port0 = 9000
+pgpool_port0 = 9999
+hostname1 = &#x27;server2&#x27;
+wd_port1 = 9000
+pgpool_port1 = 9999
+hostname2 = &#x27;server3&#x27;
+wd_port2 = 9000
+pgpool_port2 = 9999
+wd_priority = 1
+delegate_ip = &#x27;&lt;leave blank for a sec&gt;&#x27;
+if_cmd_path = &#x27;/sbin&#x27;
+if_up_cmd = &#x27;/usr/bin/sudo /sbin/ip addr add $_IP_$/24 dev eth0 label eth0:0&#x27;
+if_up_cmd = &#x27;/usr/bin/sudo /sbin/ip addr add $_IP_$/24 dev eth0 label eth0:0&#x27;
+if_down_cmd = &#x27;/usr/bin/sudo /sbin/ip addr del $_IP_$/24 dev eth0&#x27;
+arping_path = &#x27;/usr/sbin&#x27;
+arping_cmd = &#x27;/usr/bin/sudo /usr/sbin/arping -U $_IP_$ -w 1 -I eth0&#x27;
+ping_path = &#x27;/bin&#x27;
+wd_escalation_command = &#x27;/usr/local/etc/escalation.sh&#x27;
+failover_when_quorum_exists = on
+failover_require_consensus = on
+wd_remove_shutdown_nodes = on
+wd_lifecheck_method = &#x27;heartbeat&#x27;
+wd_interval = 10
+heartbeat_hostname0 = &#x27;server1&#x27;
+heartbeat_port0 = 9694
+heartbeat_device0 = &#x27;&#x27;
+heartbeat_hostname1 = &#x27;server2&#x27;
+heartbeat_port1 = 9694
+heartbeat_device1 = &#x27;&#x27;
+heartbeat_hostname2 = &#x27;server3&#x27;
+heartbeat_port2 = 9694
+heartbeat_device2 = &#x27;&#x27;
+wd_heartbeat_keepalive = 2
+wd_heartbeat_deadtime = 30</code></pre><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="3c40a44d-5b62-48ec-a9b6-ccc174a298a7"><div style="font-size:1.5em"><span class="icon">‼️</span></div><div style="width:100%">Before setting up pgpool, it&#x27;s important to install arping and other net-tool utilities.</div></figure><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="d364f91a-f553-4580-881c-7f46100d1020"><div style="font-size:1.5em"><span class="icon">🔒</span></div><div style="width:100%">Additionally, add the following line to the ~/.bashrc file:<pre id="16c2b7d4-a10f-443f-beaf-b041ecad4ce6" class="code code-wrap"><code>export LD_LIBRARY_PATH=//usr/local/lib/:$LD_LIBRARY_PATH</code></pre></div></figure><p id="6e2bfdf3-9ad5-4a51-8835-cc8e63370015" class="">To configure Watchdog for Virtual IP, first allocate an Elastic IP to the primary server through AWS. Then, use that IP in the delegate IP configuration .</p><pre id="09a36b08-4255-4221-a2b1-a9eb1bb68cd1" class="code"><code>delegate_ip = &#x27;elastic IP&#x27;</code></pre><p id="3ec80401-861b-4069-8414-2dbeb5107069" class="">now, change the following in follow_primary.sh:</p><pre id="dc077829-b4f3-45c0-b34d-a3423fabca3d" class="code"><code>PGHOME=/lib/postgresql/15
+ARCHIVEDIR=/usr/lib/postgresql/archivedir
+REPLUSER=daniyal
+PCP_USER=daniyal
+PGPOOL_PATH=/usr/local/bin/
+POSTGRESQL_STARTUP_USER=ubuntu
+SSH_KEY_FILE=id_rsa</code></pre><p id="0adc3fd8-efad-4fc0-8216-4a41662e0a10" class="">and change the following in failover.sh:</p><pre id="c0753fa7-1e0f-4324-980a-da75ecef610b" class="code"><code>PGHOME=/lib/postgresql/15
+POSTGRESQL_STARTUP_USER=ubuntu
+SSH_KEY_FILE=id_rsa</code></pre><p id="a9dab4fc-ee8b-4f05-a9ec-c91ac5e0ecff" class="">change the following in escalation.sh</p><pre id="7ead6ca9-f5ad-4b98-bddc-3d344bf6e378" class="code"><code>POSTGRESQL_STARTUP_USER=ubuntu
+SSH_KEY_FILE=id_rsa
+SSH_OPTIONS=&quot;-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/${SSH_KEY_FILE}&quot;
+PGPOOLS=(server1 server2 server3)
+VIP=&lt;delegate-ip&gt;
+DEVICE=eth0</code></pre><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="fbdd029d-3cb0-4744-9a24-287eabdf86e9"><div style="font-size:1.5em"><span class="icon">🗣</span></div><div style="width:100%">Now execute the following commands on all servers<pre id="2e97d631-7b57-41ef-a97c-e1ed6ce85776" class="code"><code>sudo mkdir /var/run/pgpool &amp;&amp; sudo chmod a+rw /var/run/pgpool
+sudo chmod a+rw /usr/local/etc/</code></pre></div></figure><p id="722c9a2e-9a49-437c-b1c2-b3266ec13b04" class="">
+</p><p id="61cffd2b-bae8-4637-9b11-a15ad19899c2" class="">
+</p><p id="8d08729c-dc14-40da-b886-2f9d03c54d73" class="">Start pgpool on the primary node first.</p><pre id="f5455097-c7e7-437b-8ce2-74ba975fe5d0" class="code"><code>Pgpool -D </code></pre><blockquote id="84ff548a-7dfd-4fa3-91a2-421d54dcf69c" class="">Your output should be in the log file in the following format:
+<figure id="1a25aeaa-0f1a-4810-825b-7753e99bc073" class="image"><a href="Step-by-Step%20Guide%20Setting%20up%20a%20High%20Availability%20%20ce854d1c6dce41d6904122ec5ff41fee/Untitled.png"><img style="width:1370px" src="Step-by-Step%20Guide%20Setting%20up%20a%20High%20Availability%20%20ce854d1c6dce41d6904122ec5ff41fee/Untitled.png"/></a></figure></blockquote><p id="27c83b73-48ea-48b0-8d21-88e538be8ad5" class="">
+</p><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="a087d4f7-1148-446a-9abe-719e6f0d95ad"><div style="font-size:1.5em"><span class="icon">✅</span></div><div style="width:100%">If u see this output then you can go on ahead and start  pgpool on the standby servers too, and observer which one is the master by using:
+<strong>”pcp_watchdog_status  -U username”</strong></div></figure><p id="67236842-c083-4824-804c-cafc40e94865" class="">After completing the installation and configuration of the PostgreSQL cluster with pgpool and watchdog on AWS, you can check the replication statistics of the primary server using the following command:</p><pre id="927bad7e-547f-4bfc-84b2-ddfe27b94189" class="code"><code>psql -h &lt;primary-ip&gt; -p 9999 -U &lt;username&gt; -c &quot;SELECT * FROM pg_stat_replication;&quot;</code></pre><p id="d8140a34-a041-4545-94fa-45fb1ea51bb1" class="">You can also check the replication slots of the primary using the following command:</p><pre id="7d3921b6-1d7e-4e08-b773-7b81167c0ab2" class="code"><code>psql -h &lt;primary-ip&gt; -p 9999 -U &lt;username&gt; -c &quot;SELECT * FROM pg_replication_slots;&quot;</code></pre><figure class="block-color-orange_background callout" style="white-space:pre-wrap;display:flex" id="8a27241f-2e35-4d00-b2eb-3482d7ae3bc2"><div style="font-size:1.5em"><span class="icon">✅</span></div><div style="width:100%">You can test if fail-over is working correctly by purposely failing the primary node and observing the cluster&#x27;s behavior through logs and the following command:</div></figure><pre id="f52d12e4-2afc-4295-87cc-a90ddb5b4f9a" class="code"><code>psql -h &lt;primary-ip&gt; -p 9999 -U &lt;username&gt; -c “show pool_nodes;”</code></pre><blockquote id="7b530532-7dd7-481b-b6a8-b45581915842" class="block-color-teal">To test if streaming replication is working fine, you can create a table from the primary and test if you can add or delete any value from it from the standby nodes.</blockquote><blockquote id="187b7a7d-5c27-449a-99e1-fb7592c6d656" class="block-color-teal">To test for load balancing, you can use pgbench. Please refer to the documentation or Google for more information.</blockquote><p id="bf8eceb5-9685-4702-a0ca-c286885a9920" class="">
+</p><p id="c4530459-bb38-457e-8ebb-49270fa49027" class="">Remember to keep your system up to date with the latest security patches and to regularly back up your data to avoid any data loss. If you need further assistance or want to explore more advanced configurations, feel free to consult the official PostgreSQL documentation or seek help from the community. </p><p id="2d6b9bbe-de12-4cd4-a8cf-d333aa52436a" class="">
+</p></div></article></body></html>
